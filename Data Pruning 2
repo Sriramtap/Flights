@@ -91,17 +91,3 @@ View(data)
 write.csv(data, "D:\\NEU\\Data\\Data in excel\\Test\\output.csv")
 
 
-install.packages('caret')
-library(caret)
-install.packages("e1071",dep=T)
-library(e1071)
-model <- train(
-  data[,18], 
-  data=data, 
-  method='knn',
-  tuneGrid=expand.grid(.k=1:10),
-  metric='Accuracy',
-  trControl=trainControl(
-    method='repeatedcv', 
-    number=10, 
-    repeats=15))
