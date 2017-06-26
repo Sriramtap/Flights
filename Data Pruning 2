@@ -1,0 +1,107 @@
+
+rm(list=ls())
+
+options( java.parameters = "-Xmx4g" )
+air1<-read.csv("D:\\NEU\\Data\\Data in excel\\Test\\output.csv",header=TRUE)
+
+#Final DataSet
+air_final<-air1[,c(7,9,10,18,19,20,31:39)]
+summary(air_final)
+
+attach(air_final)
+
+#categorizing destination
+table8<-sort(table(Dest),decreasing=T)
+
+write.csv(table8, "D:\\NEU\\Data\\Data in excel\\Test\\table8.csv")
+table8<-read.csv("D:\\NEU\\Data\\Data in excel\\Test\\table8.csv")
+air_final<-merge(air_final,table8,by.x='Dest', by.y ='row.names')
+air_final<-merge(air_final,table8, by.x = 'Dest', by.y = 'row.names')
+quantile(air_final$y,seq(0,1,by=.1))
+View(air_final)
+View(table8)
+air_final$Dest_re<-NA
+air_final1<-air_final
+air_final1$Dest_re<-ifelse(air_final[,16]<=6000,'low_busy',ifelse(air_final[,16]>6000 & air_final[,16]<=10000,"medium_busy","high_busy"))
+View(air_final1)
+
+#UniqueCarrie-DummyVar
+#AA=00, DL=01, UA=10
+detach()
+attach(air_final1)
+air_final1$carrier1<-ifelse(UniqueCarrier=="AA" | UniqueCarrier=="DL",0,1)
+air_final1$carrier2<-ifelse(UniqueCarrier=="AA" | UniqueCarrier=="UA",0,1)
+
+#Origin -Dummy variable
+#DFW=00, ATL=01 , ORD=10
+air_final1$origin1<-ifelse(Origin=="DFW" | Origin=="ATL",0,1)
+air_final1$origin2<-ifelse(Origin=="DFW" | Origin=="ORD",0,1)
+write.csv(air_final1, "D:\\NEU\\Data\\Data in excel\\Test\\table8.csv")
+air_final2<-read.csv("D:\\NEU\\Data\\Data in excel\\Test\\table8.csv")
+air_final2<-air_final2[,c(2:3,6:15,17:21)]
+View(air_final2)
+attach(air_final2)
+
+#Dest_re- Dummy Variable
+#low=00, medium=01, high=10
+air_final2$Dest1<-ifelse(Dest_re=="low_busy" | Dest_re=="medium_busy",0,1)
+air_final2$Dest2<-ifelse(Dest_re=="low_busy" | Dest_re=="high_busy",0,1)
+
+air_final2<-air_final2[,-13]
+
+#standardization
+standard<-function(x,minx,maxx){y=(x-minx)/(maxx-minx)
+                                return(y)}
+crsdep_min<-min(CRSDepTime)
+crsdep_max<-max(CRSDepTime)
+air_final2$CRSDep_std<-standard(CRSDepTime,crsdep_min,crsdep_max)
+
+crsarr_min<-min(CRSArrTime)
+crsarr_max<-max(CRSArrTime)
+air_final2$CRSArr_std<-standard(CRSArrTime,crsarr_min,crsarr_max)
+
+dist_min<-min(Distance)
+dist_max<-max(Distance)
+air_final2$Dist_std<-standard(Distance,dist_min,dist_max)
+
+weather_min<-min(WeatherDelay_re)
+weather_max<-max(WeatherDelay_re)
+air_final2$WeatherDelay_std <- standard(WeatherDelay_re,weather_min,weather_max)
+
+carrier_min<-min(CarrierDelay_re)
+carrier_max<-max(CarrierDelay_re)
+air_final2$CarrierDelay_std<-standard(CarrierDelay_re,carrier_min,carrier_max)
+
+nas_min<-min(NASDelay_re)
+nas_max<-max(NASDelay_re)
+air_final2$NASDelay_std<-standard(NASDelay_re,nas_min,nas_max)
+
+security_min<-min(SecurityDelay_re)
+security_max<-max(SecurityDelay_re)
+air_final2$SecurityDelay_std<-standard(SecurityDelay_re,security_min,security_max)
+
+late_min<-min(LateAircraftDelay_re)
+late_max<-max(LateAircraftDelay_re)
+air_final2$LateAircraftDelay_std<-standard(LateAircraftDelay_re,late_min,late_max)
+air_final2<-read.csv("D:\\NEU\\Data\\Data in excel\\Test\\table8.csv")
+data<-air_final2[,c(9:11,13:18,19:26,12)]
+colnames(data)
+View(data)
+
+write.csv(data, "D:\\NEU\\Data\\Data in excel\\Test\\output.csv")
+
+
+install.packages('caret')
+library(caret)
+install.packages("e1071",dep=T)
+library(e1071)
+model <- train(
+  data[,18], 
+  data=data, 
+  method='knn',
+  tuneGrid=expand.grid(.k=1:10),
+  metric='Accuracy',
+  trControl=trainControl(
+    method='repeatedcv', 
+    number=10, 
+    repeats=15))
