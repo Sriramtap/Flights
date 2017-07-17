@@ -1,0 +1,97 @@
+rm(list=ls())
+
+install.packages('C50')
+library(C50)
+#Standardizesd data set
+-
+airstd$WeatherDelay_std<-ifelse(airstd$WeatherDelay_std==0,0,1)
+airstd$CarrierDelay_std<-ifelse(airstd$CarrierDelay_std==0,0,1)
+airstd$NASDelay_std<-ifelse(airstd$NASDelay_std==0,0,1)
+airstd$SecurityDelay_std<-ifelse(airstd$SecurityDelay_std==0,0,1)
+airstd$LateAircraftDelay_std<-ifelse(airstd$LateAircraftDelay_std==0,0,1)
+View(airstd)
+
+# Not standardized dataset
+airnstd<- read.table("D:\\NEU\\Data\\Data in excel\\Test\\output.csv", header= T, sep= ',')
+air_final<-airnstd
+air_final$WeatherDelay_re<-ifelse(air_final$WeatherDelay_re==0,0,1)
+air_final$CarrierDelay_re<-ifelse(air_final$CarrierDelay_re==0,0,1)
+air_final$NASDelay_re<-ifelse(air_final$NASDelay_re==0,0,1)
+air_final$SecurityDelay_re<-ifelse(air_final$SecurityDelay_re==0,0,1)
+air_final$LateAircraftDelay_re<-ifelse(air_final$LateAircraftDelay_re==0,0,1)
+attach(air_final)
+write.csv(air_final, "D:\\NEU\\Data\\Data in excel\\Test\\air_final.csv") 
+#categorizing destination
+table8<-sort(table(Dest),decreasing=T)
+write.csv(table8, "D:\\NEU\\Data\\Data in excel\\Test\\table8.csv")  
+air_final<-merge(air_final,table8,by.x='Dest',by.y='row.names') ##Error in merging (issue)
+View(air_final)
+quantile(air_final$y,seq(0,1,by=.1))
+air_final1<-air_final
+air_final1$Dest_re<-ifelse(air_final$y==6000,'low_busy',ifelse(air_final$y>6000 & air_final$y<=10000,"medium_busy","high_busy"))
+View(air_final1)
+air_final1$flstatus_re<-ifelse(air_final1$flstatus_re=='On-time','OT',ifelse(air_final1$flstatus_re=='High-Delay',"HD","LD"))
+air_final2<-air_final1[air_final1$Cancelled ==0,c(7 , 9:10, 18, 19, 30:34, 41, 37:39)]
+View(air_final2)
+attach(air_final2)
+attach(airnstd)
+
+idx<-sample(nrow(air_final2),as.integer(.70*nrow(air_final2)))
+airtrain<- air_final2[idx,-14]
+airoutput<-air_final2[idx, 14]
+airtest<- air_final2[-idx,]
+attach(airtrain)
+View(airtrain)
+
+#With delays without pruning
+tree0.1<-C5.0(airtrain, as.factor(airoutput))
+summary(tree0.1)
+plot(tree0.1)
+pred0.1<-predict.C5.0(tree0.1, airtest[,-14])
+Misclass0.1<-sum(pred0.1!=airtest$flstatus_re)/nrow(airtest) ### coming (Issue) taking huge amount of time to display the tree
+
+install.packages('party')
+
+#With delays with pruning
+tree0.2<-C5.0(airtrain, as.factor(airoutput), control = C5.0Control(minCases = 3000))
+summary(tree0.2)
+plot(tree0.2)
+text(tree0.2)
+pred0.2<-predict.C5.0(tree0.2, airtest[,-14])
+Misclass0.2<-sum(pred0.2!=airtest$flstatus_re)/nrow(airtest) ### coming (Issue) taking huge amount of time to display the tree
+
+#Without delays and pruning
+airtrain2<- air_final2[idx,-c(6:10, 14)]
+airoutput2<-air_final2[idx, 14]
+airtest2<- air_final2[-idx,-c(6:10)]
+attach(airtrain2)
+  
+tree0.3<-C5.0(airtrain2, as.factor(airoutput2))
+summary(tree0.3)
+plot(tree0.3)
+pred0.3<-predict.C5.0(tree0.3, airtest2[,-9])
+Misclass0.3<-sum(pred0.3!=airtest2$flstatus_re)/nrow(airtest)   ### coming (Issue) taking huge amount of time to display the tree
+
+#Without delays and pruning- low and high
+air_final3<- air_final2[air_final2$flstatus_re!='OT', ]
+idx<-sample(nrow(air_final2),as.integer(.70*nrow(air_final2)))
+
+airtrain3<- air_final2[idx,-c(6:10, 14)]
+airoutput3<-air_final2[idx, 14]
+airtest3<- air_final2[-idx,-c(6:10)]
+attach(airtrain2)
+
+tree0.3<-C5.0(airtrain2, as.factor(airoutput2))
+summary(tree0.3)
+plot(tree0.3)
+pred0.3<-predict.C5.0(tree0.3, airtest2[,-9])
+Misclass0.3<-sum(pred0.3!=airtest2$flstatus_re)/nrow(airtest) ### coming (Issue) taking huge amount of time to display the tree
+
+#Predicting reasons for delays
+airoutput3<-air_final2[idx, 8]
+tree_NAS<-C5.0(airtrain3, as.factor(airoutput3))
+summary(tree_NAS) 
+plot(tree_NAS) 
+
+# cart experiment
+x<-rpart::rpart(airoutput3~airtrain3[.], na.action = na.rpart)
