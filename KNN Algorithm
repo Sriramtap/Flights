@@ -1,0 +1,46 @@
+rm(list=ls())
+
+
+#Reading the standardized data
+data0 <- read.csv("D:\\NEU\\Data\\Data in excel\\Test\\output.csv")   
+data <- data0[,-1]
+
+attach(data)
+data$WeatherDelay_std<-ifelse(data$WeatherDelay_std==0,0,1)
+data$CarrierDelay_std<-ifelse(data$CarrierDelay_std==0,0,1)
+data$NASDelay_std<-ifelse(data$NASDelay_std==0,0,1)
+data$SecurityDelay_std<-ifelse(data$SecurityDelay_std==0,0,1)
+data$LateAircraftDelay_std<-ifelse(data$LateAircraftDelay_std==0,0,1)
+#sampling the data
+idx<-sample(nrow(data),as.integer(.70*nrow(data)))
+training<-data[idx,]
+test<-data[-idx,]
+
+#install.packages("class")
+library(class)
+?knn()
+summary(air_final$DepDelayMinutes)
+
+# Run knn for "data" in a loop for k-values between 1 to 20. 
+#Using FOR loop:
+knnVal <- seq(1:20)
+
+for(i in knnVal){
+  cat("K value is ",i)
+  knn <- knn(training[,-18],test[,-18],training[,18],k=i) 
+  error_rate <- sum(test[,18]!=knn)/143785 # error_rate=no. of miscalssifications/total no. of records
+  print(error_rate)
+}
+#Remove the last five delay columns
+data <- data[,-(13:17)]
+
+
+# Run knn for "data" in a loop for k-values between 1 to 20. 
+#Using FOR loop:
+knnVal_1 <- seq(1:20)
+for(i in knnVal_1){
+  cat("K value is ",i)
+  knn <- knn(training[,-13],test[,-13],training[,13],k=i)
+  error_rate <- sum(test[,13]!=knn)/143785
+  print(error_rate)
+}
